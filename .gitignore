@@ -20,7 +20,10 @@ coverage/
 # Environment variables
 .env
 .env.*.local
-
+client/.env
+client/.env.*.local
+contracts/.env
+contracts/.env.*.local
 # Logs
 npm-debug.log*
 yarn-debug.log*
@@ -38,5 +41,3 @@ build/
 
 # Solidity docs (if generated)
 doc-gen/
-
-.trunk

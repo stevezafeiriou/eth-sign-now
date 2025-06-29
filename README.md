@@ -1,6 +1,6 @@
 # Eth Sign Now
 
-A full-stack Ethereum “message signing & broadcasting” dApp built with Hardhat, Ethers.js, and React. Users can sign arbitrary messages off-chain, then (if they’re the contract owner) broadcast them on-chain. Each signed message can be exported as a PNG “promise card” with generative pixel art.
+A full-stack Ethereum “message signing & broadcasting” dApp built with Hardhat, Ethers.js, and React. Users can sign arbitrary messages off-chain, then (if permitted) broadcast them on-chain. Each signed message can be exported as a PNG “promise card” with generative pixel art.
 
 ## Table of Contents
 
@@ -13,6 +13,7 @@ A full-stack Ethereum “message signing & broadcasting” dApp built with Hardh
   - [4. Frontend setup](#4-frontend-setup)
 - [Environment Variables](#environment-variables)
 - [Usage](#usage)
+  - [Toggling Contract “Open” State](#toggling-contract-open-state)
   - [Connecting your wallet](#connecting-your-wallet)
   - [Signing a message](#signing-a-message)
   - [Broadcasting on-chain](#broadcasting-on-chain)
@@ -25,15 +26,17 @@ A full-stack Ethereum “message signing & broadcasting” dApp built with Hardh
 ## Features
 
 - **Smart Contract**
-  - Only owner can store signed messages
-  - Emits `MessageSigned(address signer, string message, bytes signature)`
+  - Only owner can record messages when _closed_; when _open_, any signer with a valid signature may call
+  - Owner can toggle the `open` flag via `setOpen(bool)`
+  - Emits `MessageSigned(address signer, string message, bytes signature)` and `OpenToggled(bool open)`
 - **React Frontend**
   - Connect/Disconnect MetaMask
+  - Owner UI shows `Open`/`Closed` state and a toggle button
   - Off-chain message signing
-  - On-chain broadcast with toast notifications
+  - On-chain broadcast with promise-style toast notifications
   - “Promise card” image export with generative pixel art
 - **Pixel Art Generator**
-  - 12×12 grid, rare blue accents
+  - 12×12 mirrored grid, rare blue accents
   - Fully deterministic per-signature hash
 - **Responsive UI**
   - Frosted-glass components, dark/light theme support
@@ -57,7 +60,6 @@ cd eth-sign-now
 ### 2. Install dependencies
 
 ```bash
-# From the root directory
 npm install
 # or
 yarn install
@@ -66,22 +68,15 @@ yarn install
 ### 3. Compile & deploy contracts
 
 ```bash
-# Compile the Solidity smart contract
 npx hardhat compile
-
-# (Optional) Run tests
-npx hardhat test
-
-# Deploy to your local Hardhat node
-npx hardhat node
-# In a new terminal:
+npx hardhat node         # in one terminal
 npx hardhat run scripts/deploy.js --network localhost
 ```
 
-**_Note:_**
-
-- Update the deployed address in `src/hooks/useEthereum.js` under `CONTRACT_ADDRESS`.
-- If you deploy to a public testnet/mainnet, adjust `--network` and add your keys to `.env`.
+> **Note:**
+>
+> - Update `CONTRACT_ADDRESS` in `src/hooks/useEthereum.js` after deployment.
+> - For testnets/mainnet, configure `.env` and `hardhat.config.js`.
 
 ### 4. Frontend setup
 
@@ -92,50 +87,55 @@ npm start
 yarn start
 ```
 
-Your React app will be running at [http://localhost:3000](http://localhost:3000).
+Visit [http://localhost:3000](http://localhost:3000).
 
 ## Environment Variables
 
-Create a `.env` in the repo root with any of:
+At project root, create `.env`:
 
 ```ini
-# For public testnets / mainnet deployments
 RPC_URL=https://mainnet.infura.io/v3/YOUR_INFURA_KEY
 PRIVATE_KEY=your_deployer_private_key
 ```
 
-Then update Hardhat’s `hardhat.config.js` to load these with `dotenv`.
+Load these in `hardhat.config.js` via `dotenv`.
 
 ## Usage
+
+### Toggling Contract “Open” State
+
+- As **owner**, use the **Open/Closed** toggle in the navbar to call `setOpen(true|false)`.
+- When **closed**, only the owner can broadcast signed messages.
+- When **open**, anyone with a valid signature may call `storeSignedMessage`.
 
 ### Connecting your wallet
 
 1. Click **Connect Wallet** in the navbar.
-2. Approve the connection request in MetaMask.
+2. Approve the connection in MetaMask.
 
 ### Signing a message
 
-1. In the **Your Message** textarea, type your promise or message.
+1. Type your promise into the **Your Message** textarea.
 2. Click **Sign**.
-3. A toast confirms off-chain signature.
+3. A toast confirms the off-chain signature.
 
 ### Broadcasting on-chain
 
 1. Once signed, click **Broadcast**.
-2. A toast shows pending/confirmed states.
-3. On confirmation, the message appears in **Past Messages**.
+2. Toast notifies pending/confirmation.
+3. Confirmed messages appear in **Past Messages**.
 
 ### Exporting Promise Cards
 
-1. In **Past Messages**, click the share icon on a row.
-2. A fullscreen modal opens with your promise + signature card.
-3. Click **Download Image** to save the 800×800 PNG.
+1. In **Past Messages**, click the share icon.
+2. Fullscreen modal opens with your message card.
+3. Click **Download Image** (or **Show Icon** and then **Download Icon**).
 
 ## Folder Structure
 
 ```
 eth-sign-now/
-├─ contracts/            # Solidity sources & Hardhat config
+├─ contracts/            # Solidity & Hardhat
 │  ├─ contracts/
 │  ├─ scripts/
 │  ├─ test/
@@ -146,7 +146,7 @@ eth-sign-now/
 │  │  ├─ components/
 │  │  ├─ hooks/
 │  │  ├─ styles/
-│  │  └─ utils/           # hashArt, identicon, etc.
+│  │  └─ utils/         # hashArt, identicon, etc.
 │  ├─ .env
 │  └─ package.json
 ├─ .gitignore
@@ -155,26 +155,18 @@ eth-sign-now/
 
 ## Customization
 
-- **Contract Logic**: Tweak `contracts/Signatures.sol`.
-- **Pixel Art**: Edit `client/src/utils/hashArt.js` (grid size, palette).
-- **Styling**: Modify `client/src/styles` or `tailwind.config.js`.
-- **Notifications**: Adjust `react-toastify` settings in `App.jsx`.
+- **Contract Logic**: `contracts/Signatures.sol` (toggle behavior)
+- **Pixel Art**: `client/src/utils/hashArt.js` (grid, rarity)
+- **Styling**: `client/src/styles` or Tailwind config
+- **Notifications**: Adjust `react-toastify` in `App.jsx`
 
 ## Troubleshooting
 
-- **“could not detect network”**
-
-  - Confirm `RPC_URL` matches your running node (e.g. `http://127.0.0.1:8545`).
-
-- **MetaMask connection fails**
-
-  - Ensure your React app is served over HTTP(S) matching your wallet network.
-
-- **Artifacts not found**
-
-  - Run `npx hardhat compile` in the project root.
+- **Network errors**: Verify `RPC_URL` & network config.
+- **MetaMask issues**: Ensure correct chain and HTTP(S) origin.
+- **Missing artifacts**: Run `npx hardhat compile`.
 
 ## License
 
-This project is licensed under the MIT License.  
+This project is licensed under the MIT License.
 See the [LICENSE](./LICENSE) file for details.

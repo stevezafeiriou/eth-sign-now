@@ -38,3 +38,5 @@ build/
 
 # Solidity docs (if generated)
 doc-gen/
+
+.trunk

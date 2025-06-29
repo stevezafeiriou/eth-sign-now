@@ -1,0 +1,40 @@
+# Root-level Node dependencies
+node_modules/
+
+# Monorepo: also ignore within sub-projects
+**/node_modules/
+
+# Client build outputs
+client/build/
+
+# Hardhat / Ethereum artifacts and cache
+contracts/artifacts/
+contracts/cache/
+artifacts/
+cache/
+typechain/
+
+# Coverage reports
+coverage/
+
+# Environment variables
+.env
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Optional directories
+dist/
+build/
+
+# Solidity docs (if generated)
+doc-gen/

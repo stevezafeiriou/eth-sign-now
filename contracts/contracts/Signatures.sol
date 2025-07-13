@@ -6,49 +6,40 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @title  Owner‐restricted Message Signing & Broadcasting (with toggle)
-/// @notice Owner can record at any time.  Other users can record only when “open” is true.
+/// @notice Owner can record at any time. Other users only when “open” is true.
 contract Signatures is Ownable {
-    /// @dev when open==false, only owner may call storeSignedMessage
     bool public open;
 
-    /// @notice Emitted when a valid signed message is recorded
     event MessageSigned(
         address indexed signer,
         string message,
-        bytes signature
+        bytes   signature
     );
-
-    /// @notice Owner can flip this to allow or disable non-owner calls
     event OpenToggled(bool open);
 
     constructor() Ownable(msg.sender) {
-        open = false; // start closed
+        open = false;
     }
 
-    /// @notice Enable or disable storeSignedMessage for non-owners
-    /// @param _open  true = anyone (with valid sig) can call; false = only owner
+    /// @notice Toggle whether non‐owners may call storeSignedMessage
     function setOpen(bool _open) external onlyOwner {
         open = _open;
         emit OpenToggled(_open);
     }
 
-    /// @notice Submit a signed message for on-chain recording
-    /// @param message    The plaintext that was signed off-chain
-    /// @param signature  The ECDSA signature over `message`
+    /// @notice Submit your off‐chain signed message for on‐chain recording
     function storeSignedMessage(
         string calldata message,
-        bytes calldata signature
-    )
-        external
-    {
-        // if we're closed, only owner may call
+        bytes  calldata signature
+    ) external {
+        // if closed, only owner may call
         if (!open) {
             require(msg.sender == owner(), "Store: disabled");
         }
 
+        // re‐compute the "\x19Ethereum Signed Message:\n" digest
         bytes memory m = bytes(message);
-        // recreate the "\x19Ethereum Signed Message:\n<length><message>" hash
-        bytes32 digest = keccak256(
+        bytes32 raw = keccak256(
             abi.encodePacked(
                 "\x19Ethereum Signed Message:\n",
                 Strings.toString(m.length),
@@ -56,7 +47,8 @@ contract Signatures is Ownable {
             )
         );
 
-        address signer = ECDSA.recover(digest, signature);
+        // recover signer and enforce it matches msg.sender
+        address signer = ECDSA.recover(raw, signature);
         require(signer == msg.sender, "Invalid signature");
 
         emit MessageSigned(signer, message, signature);
@@ -65,33 +57,25 @@ contract Signatures is Ownable {
     /// @notice Recover the address that signed `message`
     function recoverSigner(
         string calldata message,
-        bytes calldata signature
-    )
-        public
-        pure
-        returns (address)
-    {
+        bytes  calldata signature
+    ) public pure returns (address) {
         bytes memory m = bytes(message);
-        bytes32 digest = keccak256(
+        bytes32 raw = keccak256(
             abi.encodePacked(
                 "\x19Ethereum Signed Message:\n",
                 Strings.toString(m.length),
                 message
             )
         );
-        return ECDSA.recover(digest, signature);
+        return ECDSA.recover(raw, signature);
     }
 
-    /// @notice Check if `expectedSigner` really signed `message`
+    /// @notice Check that `expectedSigner` truly signed `message`
     function verify(
         string calldata message,
-        bytes calldata signature,
+        bytes  calldata signature,
         address expectedSigner
-    )
-        external
-        pure
-        returns (bool)
-    {
+    ) external pure returns (bool) {
         return recoverSigner(message, signature) == expectedSigner;
     }
 }

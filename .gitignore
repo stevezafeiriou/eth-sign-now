@@ -7,6 +7,7 @@ node_modules/
 # Client build outputs
 client/build/
 
+
 # Hardhat / Ethereum artifacts and cache
 contracts/artifacts/
 contracts/cache/

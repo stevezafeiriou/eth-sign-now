@@ -38,7 +38,6 @@ const CloseBtn = styled.button`
 	border-radius: 12px;
 	cursor: pointer;
 	transition: all 0.2s ease-in-out;
-
 	&:hover {
 		background: #ddd;
 	}
@@ -71,7 +70,6 @@ const Btn = styled.button`
 	font-size: 0.9rem;
 	cursor: pointer;
 	transition: all 0.2s ease-in-out;
-
 	&:not(:disabled):hover {
 		color: #fff;
 		background: #1b1d1c;
@@ -82,6 +80,7 @@ const Btn = styled.button`
 	}
 `;
 
+// Wraps text into lines fitting within maxWidth
 function wrapText(ctx, text, maxWidth) {
 	const words = text.split(" ");
 	const lines = [];
@@ -104,6 +103,7 @@ export function ShareModal({ event, onClose }) {
 	const [timestamp, setTimestamp] = useState("");
 	const [iconOnly, setIconOnly] = useState(false);
 
+	// fetch on-chain block timestamp
 	useEffect(() => {
 		if (!event) return;
 		new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545", 31337)
@@ -111,6 +111,7 @@ export function ShareModal({ event, onClose }) {
 			.then((b) => setTimestamp(new Date(b.timestamp * 1000).toLocaleString()));
 	}, [event]);
 
+	// draw the canvas
 	useEffect(() => {
 		if (!event) return;
 		const canvas = canvasRef.current;
@@ -120,12 +121,12 @@ export function ShareModal({ event, onClose }) {
 		canvas.width = W;
 		canvas.height = H;
 
-		// fill bg
-		ctx.fillStyle = "#ffffff";
+		// white background
+		ctx.fillStyle = "#1b1d1c";
 		ctx.fillRect(0, 0, W, H);
 
 		if (iconOnly) {
-			// IDENTICON ONLY MODE: fill a centered 400×400 block
+			// Icon-only mode: centered 730×730 hash art
 			const size = 730;
 			const x = (W - size) / 2;
 			const y = (H - size) / 2;
@@ -133,29 +134,31 @@ export function ShareModal({ event, onClose }) {
 			return;
 		}
 
-		// FULL MODE: draw message + signature
+		// Full mode: draw promise + signature
 		const pad = 40;
 		const fontSize = 16;
 		const lineH = fontSize * 1.2;
 		const maxW = W - pad * 2;
 
-		// <Message>
-		ctx.fillStyle = "#1b1d1c";
-		ctx.font = `${fontSize}px Courier Prime`;
+		// <Promise> heading
+		ctx.fillStyle = "#f8f8f8";
+		ctx.font = `${fontSize}px "Courier New"`;
 		let y = pad;
 		ctx.fillText("<Promise>", pad, (y += lineH));
 
-		ctx.font = `${fontSize}px sans-serif`;
+		// Promise body
+		ctx.font = `${fontSize}px "Courier New"`;
 		event.message.split("\n").forEach((raw) =>
 			wrapText(ctx, raw, maxW).forEach((l) => {
 				ctx.fillText(l, pad, (y += lineH));
 			})
 		);
 
-		ctx.font = `${fontSize}px Courier Prime`;
+		// </Promise>
+		ctx.font = `${fontSize}px "Courier New"`;
 		ctx.fillText("</Promise>", pad, (y += lineH));
 
-		// <Signature>
+		// Prepare signature lines
 		const sig = event.signature || "";
 		const mid = Math.ceil(sig.length / 2);
 		const sig1 = sig.slice(0, mid),
@@ -170,9 +173,11 @@ export function ShareModal({ event, onClose }) {
 			"</Signature>",
 		];
 
-		ctx.fillStyle = "#1b1d1c";
-		ctx.font = `${fontSize}px Courier Prime`;
-		let sy = H - pad - sigLines.length * lineH + lineH; // top of signature block
+		// Draw signature block with 40px bottom margin
+		ctx.fillStyle = "#f8f8f8";
+		ctx.font = `${fontSize}px "Courier New"`;
+		const bottomMargin = 40;
+		let sy = H - pad - bottomMargin - sigLines.length * lineH + lineH;
 		sigLines.forEach((ln) =>
 			wrapText(ctx, ln, maxW).forEach((wrapped) => {
 				ctx.fillText(wrapped, pad, sy);
@@ -187,7 +192,7 @@ export function ShareModal({ event, onClose }) {
 		const url = canvasRef.current.toDataURL("image/png");
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = iconOnly ? "identicon.png" : "message.png";
+		a.download = iconOnly ? "hash-art.png" : "promise-card.png";
 		a.click();
 	};
 

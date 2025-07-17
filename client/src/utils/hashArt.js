@@ -1,4 +1,3 @@
-// src/utils/hashArt.js
 /**
  * drawHashArt — rotated pixel-arc with multi-palette colour blocks,
  * tri-tone shading, skinny “rail” bars, row-glitch, and per-cell noise.

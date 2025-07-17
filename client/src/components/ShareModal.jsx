@@ -1,4 +1,3 @@
-// src/components/ShareModal.jsx
 import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { createPortal } from "react-dom";

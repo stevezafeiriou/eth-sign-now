@@ -1,4 +1,3 @@
-// src/styles/theme.js
 export const theme = {
 	colors: {
 		primary: "#4E6E81", // bright green

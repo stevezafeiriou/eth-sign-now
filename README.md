@@ -1,6 +1,12 @@
-# Eth Sign Now
+# Elliptic Promise
 
-A full-stack Ethereum “message signing & broadcasting” dApp built with Hardhat, Ethers.js, and React. Users can sign arbitrary messages off-chain, then (if permitted) broadcast them on-chain. Each signed message can be exported as a PNG “promise card” with generative pixel art.
+![Elliptic Promise Dashboard](/screenshots/PromiseView.png)
+
+A full‑stack Ethereum “message signing & broadcasting” dApp built with Hardhat, Ethers.js, and React.
+
+Users can sign arbitrary messages off‑chain, then (if permitted) broadcast them on‑chain—and everyone can up/down‑vote each message weighted by on‑chain ETH balance. Each signed message also generates a unique on‑chain “promise card” pixel art that you can download as an image.
+
+---
 
 ## Table of Contents
 
@@ -9,44 +15,55 @@ A full-stack Ethereum “message signing & broadcasting” dApp built with Hardh
 - [Getting Started](#getting-started)
   - [1. Clone the repo](#1-clone-the-repo)
   - [2. Install dependencies](#2-install-dependencies)
-  - [3. Compile & deploy contracts](#3-compile--deploy-contracts)
-  - [4. Frontend setup](#4-frontend-setup)
+  - [3. Compile & Deploy](#3-compile--deploy)
+  - [4. Frontend](#4-frontend)
 - [Environment Variables](#environment-variables)
 - [Usage](#usage)
-  - [Toggling Contract “Open” State](#toggling-contract-open-state)
-  - [Connecting your wallet](#connecting-your-wallet)
-  - [Signing a message](#signing-a-message)
-  - [Broadcasting on-chain](#broadcasting-on-chain)
-  - [Exporting Promise Cards](#exporting-promise-cards)
+  - [Toggle “Open” State](#toggle-open-state)
+  - [Connect Wallet](#connect-wallet)
+  - [Sign & Broadcast Messages](#sign--broadcast-messages)
+  - [Vote on Messages](#vote-on-messages)
+  - [View & Download Promise Cards](#view--download-promise-cards)
+- [Contract Reference](#contract-reference)
 - [Folder Structure](#folder-structure)
-- [Customization](#customization)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
 ## Features
 
-- **Smart Contract**
-  - Only owner can record messages when _closed_; when _open_, any signer with a valid signature may call
-  - Owner can toggle the `open` flag via `setOpen(bool)`
-  - Emits `MessageSigned(address signer, string message, bytes signature)` and `OpenToggled(bool open)`
-- **React Frontend**
-  - Connect/Disconnect MetaMask
-  - Owner UI shows `Open`/`Closed` state and a toggle button
-  - Off-chain message signing
-  - On-chain broadcast with promise-style toast notifications
-  - “Promise card” image export with generative pixel art
-- **Pixel Art Generator**
-  - 12×12 mirrored grid, rare blue accents
-  - Fully deterministic per-signature hash
-- **Responsive UI**
-  - Frosted-glass components, dark/light theme support
+### Smart Contract (`Signatures.sol`)
+
+- **Toggleable**: Owner can call `setOpen(bool)` to allow/disallow anyone broadcasting.
+- **Message Signing**: Off‑chain 𝑒𝑡ℎ_sign, on‑chain `storeSignedMessage(message, signature)` (verifies ECDSA).
+- **ETH‑Weighted Voting**: Anyone (with nonzero ETH balance) can call `vote(messageId, support)` once per message.
+- **Data Accessors**:
+  - `forVotes(msgId)` & `againstVotes(msgId)`
+  - `totalVotes(msgId)`
+  - `recoverSigner(message, signature)` & `verify(message, signature, expectedSigner)`
+
+### React Frontend
+
+- **Connection Management**: MetaMask/EIP‑1193 connect & disconnect.
+- **Owner UI**: Displays “Open”/“Closed” state and toggle button (only for owner).
+- **Message Browser**:
+  - Table of past messages with search, sort (by id, for‑votes, against‑votes), and live vote totals.
+  - Clicking a row navigates to **Promise Detail**.
+- **Promise Detail**:
+  - Renders on‑chain pixel art (deterministic from signature).
+  - Shows for/against bars, vote counts, history of votes.
+  - “↑ For” and “↓ Against” vote buttons with toast notifications.
+  - “Download Image” button beside “← Go Back” to save the canvas art.
+- **Pixel Art Generator**:
+  - 12×12 mirrored grid with rare-color accents, seeded by the signature hash.
+- **Responsive, Themed**:
+  - Styled‑components global styles, light/dark theme, frosted‑glass UI components.
 
 ## Prerequisites
 
-- Node.js ≥ v18 (or v20 recommended)
-- npm ≥ 9 or yarn ≥ 1.22
-- A local Hardhat network or your preferred Ethereum network
-- MetaMask (or another EIP-1193 wallet)
+- **Node.js** v18+ (v20 recommended)
+- **npm** v9+ or **yarn** v1.22+
+- **Hardhat** for local Ethereum
+- **MetaMask** or other EIP‑1193 wallet
 
 ## Getting Started
 
@@ -61,112 +78,112 @@ cd eth-sign-now
 
 ```bash
 npm install
-# or
+```
+
+_or_
+
+```bash
 yarn install
 ```
 
-### 3. Compile & deploy contracts
+### 3. Compile & Deploy
+
+In one terminal, start a local node:
+
+```bash
+npx hardhat node
+```
+
+In another, compile & deploy:
 
 ```bash
 npx hardhat compile
-npx hardhat node         # in one terminal
 npx hardhat run scripts/deploy.js --network localhost
 ```
 
-> **Note:**
->
-> - Update `CONTRACT_ADDRESS` in `src/hooks/useEthereum.js` after deployment.
-> - For testnets/mainnet, configure `.env` and `hardhat.config.js`.
+> **Tip:** After deploy, copy the deployed address into
+> `src/hooks/useEthereum.js` → `CONTRACT_ADDRESS`.
 
-### 4. Frontend setup
+### 4. Frontend
 
 ```bash
 cd client
 npm start
-# or
-yarn start
 ```
 
-Visit [http://localhost:3000](http://localhost:3000).
+_open_ [http://localhost:3000](http://localhost:3000)
 
 ## Environment Variables
 
-At project root, create `.env`:
+At project root, create a `.env`:
 
 ```ini
-RPC_URL=https://mainnet.infura.io/v3/YOUR_INFURA_KEY
-PRIVATE_KEY=your_deployer_private_key
+RPC_URL=http://127.0.0.1:8545
+PRIVATE_KEY=<your_deployer_key>
 ```
 
-Load these in `hardhat.config.js` via `dotenv`.
+Load these in `hardhat.config.js` with `dotenv`.
 
 ## Usage
 
-### Toggling Contract “Open” State
+### Toggle “Open” State
 
-- As **owner**, use the **Open/Closed** toggle in the navbar to call `setOpen(true|false)`.
-- When **closed**, only the owner can broadcast signed messages.
-- When **open**, anyone with a valid signature may call `storeSignedMessage`.
+- **Owner** sees an **Enable/Disable** button in the sidebar.
+- When **closed**, only owner can broadcast. When **open**, anyone with a valid ECDSA signature may call `storeSignedMessage`.
 
-### Connecting your wallet
+### Connect Wallet
 
-1. Click **Connect Wallet** in the navbar.
-2. Approve the connection in MetaMask.
+- Click **Connect** in the sidebar and approve in MetaMask.
+- Your address appears, and owner‑only controls unlock if you’re the contract owner.
 
-### Signing a message
+### Sign & Broadcast Messages
 
-1. Type your promise into the **Your Message** textarea.
-2. Click **Sign**.
-3. A toast confirms the off-chain signature.
+1. In **Create Promise**, type your text.
+2. Click **Sign** to produce an off‑chain signature.
+3. Click **Broadcast** to call `storeSignedMessage(message, signature)`.
+4. Toast notifications show pending/confirmed.
 
-### Broadcasting on-chain
+### Vote on Messages
 
-1. Once signed, click **Broadcast**.
-2. Toast notifies pending/confirmation.
-3. Confirmed messages appear in **Past Messages**.
+- In **Dashboard**, use the **For**/ **Against** buttons under each promise detail.
+- Votes are weighted by your ETH balance at the time of voting.
+- Each address may vote only once per message.
 
-### Exporting Promise Cards
+### View & Download Promise Cards
 
-1. In **Past Messages**, click the share icon.
-2. Fullscreen modal opens with your message card.
-3. Click **Download Image** (or **Show Icon** and then **Download Icon**).
+1. Click a row in **Past Messages** to open **Promise Detail**.
+2. The left panel shows the generated pixel art canvas.
+3. Click **Download Image** (next to “← Go Back”) to save the art as PNG.
 
 ## Folder Structure
 
 ```
 eth-sign-now/
-├─ contracts/            # Solidity & Hardhat
-│  ├─ contracts/
-│  ├─ scripts/
+├─ contracts/
+│  ├─ Signatures.sol
+│  ├─ scripts/deploy.js
 │  ├─ test/
 │  └─ hardhat.config.js
-├─ client/               # React frontend
+├─ client/
 │  ├─ public/
 │  ├─ src/
-│  │  ├─ components/
-│  │  ├─ hooks/
-│  │  ├─ styles/
-│  │  └─ utils/         # hashArt, identicon, etc.
-│  ├─ .env
+│  │  ├─ components/    # EventsTable, PromiseDetail, Sidebar…
+│  │  ├─ hooks/         # useEthereum.js
+│  │  ├─ styles/        # GlobalStyles, glass…
+│  │  └─ utils/         # hashArt, etc.
 │  └─ package.json
-├─ .gitignore
-└─ README.md
+├─ .env
+├─ README.md
+└─ LICENSE
 ```
-
-## Customization
-
-- **Contract Logic**: `contracts/Signatures.sol` (toggle behavior)
-- **Pixel Art**: `client/src/utils/hashArt.js` (grid, rarity)
-- **Styling**: `client/src/styles` or Tailwind config
-- **Notifications**: Adjust `react-toastify` in `App.jsx`
 
 ## Troubleshooting
 
-- **Network errors**: Verify `RPC_URL` & network config.
-- **MetaMask issues**: Ensure correct chain and HTTP(S) origin.
-- **Missing artifacts**: Run `npx hardhat compile`.
+- **Contract calls revert**: verify `CONTRACT_ADDRESS` and ABI match your deployed instance.
+- **Cannot read owner/open**: ensure your chain is up (`npx hardhat node`) and the contract code at that address is non‑zero.
+- **Wallet errors**: check MetaMask is on the same chain (localhost:8545).
+- **Canvas download not working**: make sure the “Download Image” button calls `canvas.toDataURL()` under the hood.
 
 ## License
 
-This project is licensed under the MIT License.
-See the [LICENSE](./LICENSE) file for details.
+This project is licensed under MIT. See [LICENSE](LICENSE) for details.

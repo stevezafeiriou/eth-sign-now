@@ -1,4 +1,3 @@
-// src/hooks/useEthereum.js
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import SignatureJson from "../contracts/Signatures.json";

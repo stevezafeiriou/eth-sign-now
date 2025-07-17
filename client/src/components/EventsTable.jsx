@@ -1,4 +1,3 @@
-// src/components/EventsTable.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { ethers, BigNumber } from "ethers";

@@ -1,4 +1,3 @@
-// src/components/Navbar.jsx
 import React from "react";
 import styled from "styled-components";
 import { GlassButton } from "../styles/glass";

@@ -1,21 +1,19 @@
 // src/components/EventsTable.jsx
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { GlassCard } from "../styles/glass";
-import { ShareModal } from "./ShareModal";
-import { drawHashArt } from "../utils/hashArt";
-import { FaList, FaThLarge } from "react-icons/fa";
+import { ethers, BigNumber } from "ethers";
+import { useNavigate } from "react-router-dom";
 
 const Container = styled.div`
-	margin: 1rem 0;
+	max-width: 800px;
+	margin: 0 auto;
+	padding: 1rem;
 `;
 
 const Controls = styled.div`
 	display: flex;
 	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
+	gap: 0.5rem;
 	margin-bottom: 1rem;
 `;
 
@@ -23,335 +21,243 @@ const SearchInput = styled.input`
 	flex: 1;
 	min-width: 200px;
 	padding: 0.5rem 0.75rem;
-	border: 1px solid rgba(0, 0, 0, 0.2);
-	border-radius: 8px;
+	border: 1px solid ${({ theme }) => theme.colors.border};
+	background-color: #f8f8f8;
+	border-radius: 6px;
 	font-size: 0.9rem;
-	&:focus {
-		outline: none;
-		border-color: #007bff;
-		box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
-	}
+	color: ${({ theme }) => theme.colors.text};
 `;
 
-const Tabs = styled.div`
+const Select = styled.select`
+	padding: 0.5rem 0.75rem;
+	border: 1px solid ${({ theme }) => theme.colors.border};
+	border-radius: 6px;
+	font-size: 0.9rem;
+	color: ${({ theme }) => theme.colors.text};
+`;
+
+const List = styled.div`
 	display: flex;
-	gap: 0.5rem;
+	flex-direction: column;
 `;
 
-const Tab = styled.button`
-	background: ${({ active }) => (active ? "#1b1d1c" : "transparent")};
-	color: ${({ active }) => (active ? "#fff" : "#1b1d1c")};
-	border: 1px solid #1b1d1c;
-	padding: 0.5rem 1rem;
-	border-radius: 8px;
+const Item = styled.div`
+	background: #ffffff;
+	border-radius: 6px;
+	padding: 1rem;
 	cursor: pointer;
-	font-size: 0.9rem;
-	transition: 0.2s;
+	transition: box-shadow 0.2s ease;
+
 	&:hover {
-		background: #1b1d1c;
-		color: #fff;
+		background: #f8f8f8;
 	}
 `;
 
-const TableWrapper = styled.div`
-	overflow-x: auto;
-	font-family: "Inter", sans-serif;
-	margin-bottom: 1.5rem; /* space after table */
+export const TopRow = styled.div`
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 `;
 
-const Table = styled.table`
-	width: 100%;
-	border-collapse: collapse;
-	table-layout: fixed;
-	font-size: 0.9rem;
-	th,
-	td {
-		padding: 0.75rem;
-		border: 1px solid rgba(0, 0, 0, 0.1);
-		vertical-align: top;
-		white-space: pre-wrap;
-		word-break: break-word;
-		text-align: left;
-	}
-	th {
-		background: #1b1d1c;
-		color: #fff;
-		font-weight: 400;
-	}
-	tr {
-		cursor: pointer;
-		transition: background 0.2s;
-	}
-	tr:hover {
-		background: rgba(74, 144, 226, 0.1);
-	}
-	a {
-		color: #1b1d1c;
-		transition: color 0.2s;
-		&:hover {
-			color: #007bff;
-		}
-	}
-	@media (max-width: 600px) {
-		display: block;
-		thead {
-			display: none;
-		}
-		tr {
-			display: block;
-			margin-bottom: 1rem;
-			border: 1px solid rgba(0, 0, 0, 0.1);
-			border-radius: 8px;
-			padding: 0.5rem;
-		}
-		td {
-			display: flex;
-			justify-content: space-between;
-			padding: 0.5rem;
-			border: none;
-			border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-		}
-		td:last-child {
-			border-bottom: none;
-		}
-		td::before {
-			content: attr(data-label);
-			font-weight: 600;
-			margin-right: 0.5rem;
-		}
-	}
+export const Left = styled.div`
+	flex: 1;
+	min-width: 0;
 `;
 
-const TruncatedCell = styled.div`
-	width: 100%;
-`;
-
-const ExpandBtn = styled.span`
-	display: block;
-	color: #007bff;
-	cursor: pointer;
-	margin-top: 4px;
-	&:hover {
-		text-decoration: underline;
-	}
-`;
-
-const ImageGrid = styled.div`
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-	gap: 1rem;
-	margin-bottom: 1.5rem; /* space after grid */
-`;
-
-const GridItem = styled.div`
+export const Title = styled.div`
+	font-size: 1rem;
+	font-weight: 600;
+	color: ${({ theme }) => theme.colors.text};
+	white-space: nowrap;
 	overflow: hidden;
-	border-radius: 8px;
-	background: #fff;
-	cursor: pointer;
-	transition: transform 0.2s;
-	&:hover {
-		transform: scale(1.05);
-	}
-	canvas {
-		display: block;
-		width: 100%;
-		height: auto;
-	}
+	text-overflow: ellipsis;
 `;
 
-const TabIcon = styled.button`
-	background: transparent;
-	border: none;
-	padding: 0.5rem;
-	border-radius: 8px;
-	cursor: pointer;
-	color: ${({ active }) => (active ? "#1b1d1c" : "rgba(0,0,0,0.6)")};
-	background: ${({ active }) => (active ? "#fff" : "transparent")};
-	box-shadow: ${({ active }) =>
-		active ? "0 1px 3px rgba(0,0,0,0.2)" : "none"};
-	transition: all 0.2s;
-	font-size: 1.2rem;
+export const Subtitle = styled.div`
+	font-size: 0.85rem;
+	color: ${({ theme }) => theme.colors.muted};
+	margin-top: 0.25rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+`;
+
+export const Stats = styled.div`
+	display: flex;
+	gap: 1rem;
+	font-size: 0.85rem;
+	white-space: nowrap;
+`;
+
+export const Stat = styled.div`
 	display: flex;
 	align-items: center;
-	justify-content: center;
+	color: ${({ up, theme }) =>
+		up ? theme.colors.primary : theme.colors.danger};
 
-	&:hover {
-		color: #007bff;
+	&::before {
+		content: "${({ up }) => (up ? "↑" : "↓")}";
+		margin-right: 0.25rem;
 	}
 `;
 
-export function EventsTable({ events }) {
-	const [selected, setSelected] = useState(null);
-	const [expanded, setExpanded] = useState({});
+export const BarPreview = styled.div`
+	margin-top: 0.75rem;
+`;
+
+export const PreviewBar = styled.div`
+	position: relative;
+	height: 6px;
+	background: ${({ theme }) => theme.colors.border};
+	border-radius: 3px;
+	overflow: hidden;
+`;
+
+export const ForPreview = styled.div`
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	background: ${({ theme }) => theme.colors.primary};
+	width: ${({ pct }) => pct}%;
+`;
+
+export const AgainstPreview = styled.div`
+	position: absolute;
+	right: 0;
+	top: 0;
+	height: 100%;
+	background: ${({ theme }) => theme.colors.danger};
+	width: ${({ pct }) => pct}%;
+`;
+
+export const PreviewLabels = styled.div`
+	display: flex;
+	justify-content: space-between;
+	font-size: 0.75rem;
+	color: ${({ theme }) => theme.colors.muted};
+	margin-top: 0.25rem;
+`;
+
+export function EventsTable({ events, readContract }) {
 	const [filter, setFilter] = useState("");
-	const [tab, setTab] = useState("list");
-	const canvasRefs = useRef({});
+	const [sortKey, setSortKey] = useState("latest");
+	const [order, setOrder] = useState("desc");
+	const [votes, setVotes] = useState({});
+	const navigate = useNavigate();
 
-	const toggleExpand = (tx, field) =>
-		setExpanded((prev) => ({
-			...prev,
-			[tx]: { ...prev[tx], [field]: !prev[tx]?.[field] },
-		}));
+	// fetch vote counts
+	useEffect(() => {
+		if (!readContract || events.length === 0) return;
+		(async () => {
+			const data = {};
+			for (const e of events) {
+				const f = await readContract.forVotes(e.messageId);
+				const a = await readContract.againstVotes(e.messageId);
+				data[e.messageId.toString()] = { for: f, against: a };
+			}
+			setVotes(data);
+		})();
+	}, [readContract, events]);
 
-	const renderText = (text = "", tx, field) => {
-		const isExpanded = expanded[tx]?.[field];
-		const limit = 30;
-		if (text.length <= limit) return text;
-		return isExpanded ? (
-			<>
-				{text}
-				<ExpandBtn
-					onClick={(e) => {
-						e.stopPropagation();
-						toggleExpand(tx, field);
-					}}
-				>
-					Show less
-				</ExpandBtn>
-			</>
-		) : (
-			<>
-				{text.slice(0, limit)}…{" "}
-				<ExpandBtn
-					onClick={(e) => {
-						e.stopPropagation();
-						toggleExpand(tx, field);
-					}}
-				>
-					Show more
-				</ExpandBtn>
-			</>
-		);
-	};
-
-	/** -----------------------------------------------------------------
-	 *  NEWEST-FIRST ORDERING
-	 *  -----------------------------------------------------------------
-	 *  1. Filter by query (if any).
-	 *  2. Reverse the list so the most-recent event—assumed to be appended
-	 *     last in `events`—appears first in both the table and grid.
-	 *  ----------------------------------------------------------------- */
+	// filter
 	const filtered = useMemo(() => {
 		const q = filter.trim().toLowerCase();
-		const base = q
-			? events.filter(
-					(e) =>
-						e.signer.toLowerCase().includes(q) ||
-						e.txHash.toLowerCase().includes(q) ||
-						(e.signature || "").toLowerCase().includes(q)
-			  )
-			: events;
-
-		return [...base].reverse(); // newest → oldest
+		return events.filter(
+			(e) =>
+				e.message.toLowerCase().includes(q) ||
+				e.signer.toLowerCase().includes(q) ||
+				e.txHash.toLowerCase().includes(q)
+		);
 	}, [events, filter]);
 
-	/* draw hash-art for grid */
-	useEffect(() => {
-		if (tab !== "grid") return;
-		filtered.forEach((e) => {
-			const canvas = canvasRefs.current[e.txHash];
-			if (!canvas) return;
-			const ctx = canvas.getContext("2d");
-			const size = (canvas.width = 120);
-			canvas.height = size;
-			drawHashArt(ctx, e.signature || e.txHash, 0, 0, size);
+	// sort
+	const sorted = useMemo(() => {
+		return [...filtered].sort((a, b) => {
+			if (sortKey === "for" || sortKey === "against") {
+				const va = votes[a.messageId]?.[sortKey] || BigNumber.from(0);
+				const vb = votes[b.messageId]?.[sortKey] || BigNumber.from(0);
+				if (va.lt(vb)) return order === "asc" ? -1 : 1;
+				if (va.gt(vb)) return order === "asc" ? 1 : -1;
+				return 0;
+			} else {
+				const ai = Number(a.messageId);
+				const bi = Number(b.messageId);
+				if (sortKey === "oldest") {
+					return order === "asc" ? ai - bi : bi - ai;
+				}
+				return order === "asc" ? bi - ai : ai - bi;
+			}
 		});
-	}, [tab, filtered]);
+	}, [filtered, votes, sortKey, order]);
+
+	const slice = (s, n = 60) => (s.length > n ? s.slice(0, n - 3) + "…" : s);
 
 	return (
 		<Container>
-			<GlassCard>
-				<h2>Signed Messages</h2>
-				{/* ----- controls ----- */}
-				<Controls>
-					<SearchInput
-						type="text"
-						placeholder="Search by address, tx or signature…"
-						value={filter}
-						onChange={(e) => setFilter(e.target.value)}
-					/>
-					<Tabs>
-						<TabIcon
-							onClick={() => setTab("list")}
-							active={tab === "list"}
-							aria-label="List view"
+			<Controls>
+				<SearchInput
+					placeholder="Search..."
+					value={filter}
+					onChange={(e) => setFilter(e.target.value)}
+				/>
+				<Select value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
+					<option value="latest">Sort: Latest</option>
+					<option value="oldest">Sort: Oldest</option>
+					<option value="for">Sort: For Votes</option>
+					<option value="against">Sort: Against Votes</option>
+				</Select>
+				<Select value={order} onChange={(e) => setOrder(e.target.value)}>
+					<option value="desc">Order: Desc</option>
+					<option value="asc">Order: Asc</option>
+				</Select>
+			</Controls>
+
+			<List>
+				{sorted.map((e) => {
+					const v = votes[e.messageId] || {};
+					const f = v.for || BigNumber.from(0);
+					const a = v.against || BigNumber.from(0);
+					const total = f.add(a);
+					const pctFor = total.isZero() ? 0 : f.mul(100).div(total).toNumber();
+					const pctAgainst = 100 - pctFor;
+
+					return (
+						<Item
+							key={e.txHash}
+							onClick={() => navigate(`/promise/${e.messageId}`)}
 						>
-							<FaList />
-						</TabIcon>
-						<TabIcon
-							onClick={() => setTab("grid")}
-							active={tab === "grid"}
-							aria-label="Grid view"
-						>
-							<FaThLarge />
-						</TabIcon>
-					</Tabs>
-				</Controls>
+							<TopRow>
+								<Left>
+									<Title>
+										#{e.messageId} – {slice(e.message)}
+									</Title>
+									<Subtitle>by {slice(e.signer, 16)}</Subtitle>
+								</Left>
+								<Stats>
+									<Stat up>
+										{parseFloat(ethers.utils.formatEther(f)).toFixed(2)} ETH
+									</Stat>
+									<Stat>
+										{parseFloat(ethers.utils.formatEther(a)).toFixed(2)} ETH
+									</Stat>
+								</Stats>
+							</TopRow>
 
-				{/* ----- list view ----- */}
-				{tab === "list" && (
-					<TableWrapper>
-						<Table>
-							<thead>
-								<tr>
-									<th>No</th>
-									<th>Address</th>
-									<th>Promise</th>
-									<th>Tx Hash</th>
-									<th>Signature</th>
-								</tr>
-							</thead>
-							<tbody>
-								{filtered.map((e) => (
-									<tr key={e.txHash} onClick={() => setSelected(e)}>
-										<td data-label="No">{e.txHash.length}</td>
-										<td data-label="Address">
-											{e.signer.slice(0, 6)}…{e.signer.slice(-4)}
-										</td>
-										<td data-label="Promise">
-											<TruncatedCell>
-												{renderText(e.message, e.txHash, "msg")}
-											</TruncatedCell>
-										</td>
-										<td
-											data-label="Tx Hash"
-											onClick={(ev) => ev.stopPropagation()}
-										>
-											<a
-												href={`http://localhost:8545/tx/${e.txHash}`}
-												target="_blank"
-												rel="noopener noreferrer"
-											>
-												{e.txHash.slice(0, 6)}…{e.txHash.slice(-4)}
-											</a>
-										</td>
-										<td data-label="Signature">
-											<TruncatedCell style={{ fontFamily: "monospace" }}>
-												{renderText(e.signature, e.txHash, "sig")}
-											</TruncatedCell>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</Table>
-					</TableWrapper>
-				)}
-
-				{/* ----- grid view ----- */}
-				{tab === "grid" && (
-					<ImageGrid>
-						{filtered.map((e) => (
-							<GridItem key={e.txHash} onClick={() => setSelected(e)}>
-								<canvas ref={(el) => (canvasRefs.current[e.txHash] = el)} />
-							</GridItem>
-						))}
-					</ImageGrid>
-				)}
-			</GlassCard>
-
-			{selected && (
-				<ShareModal event={selected} onClose={() => setSelected(null)} />
-			)}
+							{/* <BarPreview>
+								<PreviewBar>
+									<ForPreview pct={pctFor} />
+									<AgainstPreview pct={pctAgainst} />
+								</PreviewBar>
+								<PreviewLabels>
+									<span>{pctFor}%</span>
+									<span>{pctAgainst}%</span>
+								</PreviewLabels>
+							</BarPreview> */}
+						</Item>
+					);
+				})}
+			</List>
 		</Container>
 	);
 }

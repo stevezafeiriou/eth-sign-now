@@ -1,14 +1,19 @@
 // src/components/MessageForm.jsx
 import React from "react";
 import styled from "styled-components";
-import { GlassCard, GlassButton } from "../styles/glass";
+
+const Container = styled.div`
+	max-width: 800px;
+	margin: 0 auto;
+	padding: 1rem;
+`;
 
 const Warning = styled.div`
 	background: #ffe5e5;
-	border: 1px solid #e74c3c;
-	color: #e74c3c;
+	border: 1px solid ${({ theme }) => theme.colors.danger};
+	color: ${({ theme }) => theme.colors.danger};
 	padding: 1rem;
-	border-radius: 16px;
+	border-radius: 6px;
 	font-weight: 400;
 	margin-bottom: 1rem;
 	text-align: center;
@@ -19,12 +24,10 @@ const Warning = styled.div`
 	}
 `;
 
-const Label = styled.label`
+const Label = styled.h3`
 	display: block;
 	margin: 0.5rem 0;
 	font-weight: 400;
-	font-style: italic;
-
 	@media (max-width: 600px) {
 		font-size: 0.9rem;
 	}
@@ -35,7 +38,7 @@ const TextArea = styled.textarea`
 	padding: 0.75rem;
 	margin-top: 0.5rem;
 	border: 1px solid rgba(0, 0, 0, 0.3);
-	border-radius: 8px;
+	border-radius: 6px;
 	background: ${({ disabled }) =>
 		disabled ? "#f0f0f0" : "rgba(0, 0, 0, 0.05)"};
 	color: #1b1d1c;
@@ -62,19 +65,14 @@ const Addr = styled.a`
 
 	background: rgba(0, 0, 0, 0.1);
 	padding: 0.25rem 0.75rem;
-	border-radius: 12px;
+	border-radius: 16px;
 	font-size: 0.8rem;
 	font-weight: 400;
 	font-family: monospace;
-	color: #007bff;
+	color: ${({ theme }) => theme.colors.blue};
 	transition: all 0.2s ease-in-out;
 	cursor: pointer;
 	text-decoration: none;
-
-	&:hover {
-		background: rgba(0, 0, 0, 1);
-		color: #ffffff;
-	}
 
 	@media (max-width: 600px) {
 		max-width: 140px;
@@ -92,6 +90,35 @@ const BtnRow = styled.div`
 		flex-direction: column;
 		gap: 0.75rem;
 		margin-top: 1rem;
+	}
+`;
+
+const GlassButton = styled.button`
+	background: #f8f8f8;
+	color: ${({ theme }) => theme.colors.blue};
+
+	padding: 0.35rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	border-radius: 6px;
+	border: 1px solid ${({ theme }) => theme.colors.border};
+	width: 100%;
+	cursor: pointer;
+	transition: background 0.2s;
+
+	&:hover:not(:disabled) {
+		background: ${({ theme }) => theme.colors.border};
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		color: ${({ theme }) => theme.colors.muted};
+		cursor: not-allowed;
+	}
+
+	@media (max-width: ${({ theme }) => theme.breakpoints.md}) {
+		width: auto;
+		padding: 0.5rem 1rem;
 	}
 `;
 
@@ -119,7 +146,7 @@ export function MessageForm({
 			{!open && !isOwner && (
 				<Warning>Signing and broadcasting are currently disabled.</Warning>
 			)}
-			<GlassCard>
+			<Container>
 				<Label>Signer Account</Label>
 				{account && (
 					<Addr
@@ -152,7 +179,7 @@ export function MessageForm({
 						Broadcast
 					</GlassButton>
 				</BtnRow>
-			</GlassCard>
+			</Container>
 		</>
 	);
 }

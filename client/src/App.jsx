@@ -1,32 +1,53 @@
-// src/App.jsx
-import React, { useState } from "react";
-import { ThemeProvider } from "styled-components";
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import styled, { ThemeProvider } from "styled-components";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { GlobalStyles } from "./styles/GlobalStyles";
 import { theme } from "./styles/theme";
 import { useEthereum } from "./hooks/useEthereum";
-import { Navbar } from "./components/Navbar";
-import { MessageForm } from "./components/MessageForm";
+
+import { Sidebar } from "./components/Sidebar";
 import { EventsTable } from "./components/EventsTable";
-import { Footer } from "./components/Footer";
+import { PromiseDetail } from "./components/PromiseDetail";
+import { MessageForm } from "./components/MessageForm";
+
+const AppLayout = styled.div`
+	display: flex;
+	min-height: 100vh;
+	@media (max-width: 768px) {
+		flex-direction: column;
+	}
+`;
+
+const MainContent = styled.main`
+	flex: 1;
+	padding: 2rem 1rem;
+	margin-left: 240px;
+	box-sizing: border-box;
+	@media (max-width: 768px) {
+		margin-left: 0;
+		padding-top: 1rem;
+	}
+`;
 
 export default function App() {
 	const {
 		account,
 		owner,
 		events,
+		readContract,
 		writeContract,
 		connect,
 		disconnect,
 		open,
 		toggleOpen,
 	} = useEthereum();
-	const isOwner = account && owner && account === owner;
+	const isOwner = account && owner === account;
 
-	const [message, setMessage] = useState("");
-	const [signature, setSignature] = useState("");
+	const [message, setMessage] = React.useState("");
+	const [signature, setSignature] = React.useState("");
 
 	const handleSign = async () => {
 		try {
@@ -40,44 +61,39 @@ export default function App() {
 
 	const handleSend = async () => {
 		if (!writeContract || !signature) return;
-		const txPromise = writeContract.storeSignedMessage(message, signature);
+		const tx = writeContract.storeSignedMessage(message, signature);
 		toast.promise(
-			txPromise,
+			tx,
 			{
 				pending: "Broadcasting…",
 				success: (tx) => {
 					tx.wait().then(() => toast.success("Confirmed!"));
 					return "Sent " + tx.hash.slice(0, 10) + "…";
 				},
-				error: "Transaction failed",
+				error: "Broadcast failed",
 			},
 			{ autoClose: false }
 		);
-
 		try {
-			await txPromise;
+			await tx;
 			setMessage("");
 			setSignature("");
 		} catch {}
 	};
 
-	// Wrap toggleOpen in toast.promise
-	const handleToggleWriting = async () => {
-		const txPromise = toggleOpen();
+	const handleToggle = async () => {
+		const tx = toggleOpen();
 		toast.promise(
-			txPromise,
+			tx,
 			{
-				pending: open ? "Disabling Signatures..." : "Enabling Signatures...",
+				pending: open ? "Disabling…" : "Enabling…",
 				success: (tx) => {
-					// fire a second toast once confirmed
-					tx.wait().then(() => {
-						toast.success(
-							`Signatures are now ${open ? "enabled" : "disabled"}!`
-						);
-					});
+					tx.wait().then(() =>
+						toast.success(`Signatures ${open ? "disabled" : "enabled"}!`)
+					);
 					return open ? "Disabled" : "Enabled";
 				},
-				error: "Transaction failed",
+				error: "Toggle failed",
 			},
 			{ autoClose: false }
 		);
@@ -88,32 +104,67 @@ export default function App() {
 			<GlobalStyles />
 			<ToastContainer position="top-right" />
 
-			<Navbar
-				account={account}
-				isOwner={isOwner}
-				open={open}
-				onToggleOpen={handleToggleWriting}
-				onConnect={connect}
-				onDisconnect={disconnect}
-			/>
-
-			<main style={{ padding: "1rem", maxWidth: 800, margin: "0 auto" }}>
-				{account && (
-					<MessageForm
+			<BrowserRouter>
+				<AppLayout>
+					<Sidebar
+						open={open}
+						onConnect={connect}
+						onDisconnect={disconnect}
 						account={account}
 						isOwner={isOwner}
-						open={open}
-						message={message}
-						setMessage={setMessage}
-						signature={signature}
-						setSignature={setSignature}
-						onSign={handleSign}
-						onSend={handleSend}
+						onToggleOpen={handleToggle}
 					/>
-				)}
-				<EventsTable events={events} />
-			</main>
-			<Footer />
+
+					<MainContent>
+						<Routes>
+							<Route
+								path="/"
+								element={
+									<EventsTable
+										events={events}
+										readContract={readContract}
+										writeContract={writeContract}
+										account={account}
+									/>
+								}
+							/>
+							<Route
+								path="/promise/:id"
+								element={
+									<PromiseDetail
+										events={events}
+										readContract={readContract}
+										writeContract={writeContract}
+										account={account}
+									/>
+								}
+							/>
+							<Route
+								path="/create"
+								element={
+									account ? (
+										<MessageForm
+											account={account}
+											isOwner={isOwner}
+											open={open}
+											message={message}
+											setMessage={setMessage}
+											signature={signature}
+											setSignature={setSignature}
+											onSign={handleSign}
+											onSend={handleSend}
+										/>
+									) : (
+										<p style={{ textAlign: "center" }}>
+											Please connect your wallet.
+										</p>
+									)
+								}
+							/>
+						</Routes>
+					</MainContent>
+				</AppLayout>
+			</BrowserRouter>
 		</ThemeProvider>
 	);
 }
